@@ -1,0 +1,157 @@
+-- Create a safe zone part
+local safe = Instance.new("Part")
+safe.Parent = workspace
+safe.Anchored = true
+safe.Size = Vector3.new(1000,5,1000)
+safe.Transparency = 1
+safe.CanTouch = false
+
+getgenv().Farm = true
+-- Variables and services
+lp = game.Players.LocalPlayer
+tween_s = cloneref(game:GetService('TweenService'))
+getgenv().Speed = 9999
+
+-- Functions
+local function sendNotification(title, text, duration)
+    game.StarterGui:SetCore("SendNotification", {
+        Title = title;
+        Text = text;
+        Duration = duration;
+    })
+end
+
+local function click(X, Y)
+    local VirtualInputManager = cloneref(game:GetService("VirtualInputManager"))
+    VirtualInputManager:SendMouseButtonEvent(X, Y, 0, true, game, 1)
+    VirtualInputManager:SendMouseButtonEvent(X, Y, 0, false, game, 1)
+end
+
+local function press_key(key)
+    local VirtualInputManager = cloneref(game:GetService("VirtualInputManager"))
+    VirtualInputManager:SendKeyEvent(true, key, false, game)
+    wait(0.3)
+    VirtualInputManager:SendKeyEvent(false, key, false, game)
+end
+
+local function press(key, X, Y)
+    local VirtualInputManager = cloneref(game:GetService("VirtualInputManager"))
+    VirtualInputManager:SendKeyEvent(true, key, false, game)
+    wait(0.3)
+    VirtualInputManager:SendMouseButtonEvent(X, Y, 0, true, game, 1)
+    VirtualInputManager:SendMouseButtonEvent(X, Y, 0, false, game, 1)
+    wait(0.1)
+    VirtualInputManager:SendKeyEvent(false, key, false, game)
+end
+
+local function check_reload()
+    if game.Players.LocalPlayer.PlayerGui.Interface.HUD.Main.Top.Blade.Sets.Text == "0 / 3" and game.Players.LocalPlayer.PlayerGui.Interface.HUD.Main.Top.Blade.Inner.Bar.Gradient.Offset == Vector2.new(0,0) then
+        local refill = workspace.Unclimbable.Reloads:GetChildren()
+        for _, v in pairs(refill) do
+            v:FindFirstChild("Refill").CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame
+            v:FindFirstChild("Refill").Transparency = 0
+        end
+        wait(1)
+        press_key(Enum.KeyCode.R)
+        wait(5)
+    end
+    if game.Players.LocalPlayer.PlayerGui.Interface.HUD.Main.Top.Blade.Inner.Bar.Gradient.Offset == Vector2.new(0,0) then
+        wait(1)
+        press_key(Enum.KeyCode.R)
+        wait(3)
+    end
+end
+
+function tween(v, tar)
+    if lp.Character and lp.Character:FindFirstChild('HumanoidRootPart') then
+        local function startT(obj)
+            while true do
+                if game.Players.LocalPlayer.PlayerGui.Interface.HUD.Main.Top.Blade.Sets.Text == "0 / 3" and game.Players.LocalPlayer.PlayerGui.Interface.HUD.Main.Top.Blade.Inner.Bar.Gradient.Offset == Vector2.new(0,0) then
+                    wait(5)
+                end
+                obj = game.workspace.Titans.Attack_Titan.Hitboxes.Hit.Nape.Position
+                local cf = CFrame.new(obj)
+                cf = cf + Vector3.new(0, 250, 0)
+                local a = tween_s:Create(lp.Character.HumanoidRootPart, tweeninfo, {CFrame = cf})
+                --lp.Character.HumanoidRootPart.Anchored = true
+                a:Play()
+                a.Completed:Wait()
+                safe.Position = game.Players.LocalPlayer.Character.HumanoidRootPart.Position + Vector3.new(0, -20, 0)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
+                --lp.Character.HumanoidRootPart.Anchored = false
+                wait()
+            end
+        end
+        spawn(function() startT(v.Position) end)
+        repeat
+            pcall(function() game.Players.LocalPlayer.Character.HumanoidRootPart.BV.Velocity = Vector3.new(0, getgenv().Speed, 0) end)
+            check_reload()
+            press(Enum.KeyCode.E, 500, 500)
+        until tar:FindFirstChild("Humanoid") == nil
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
+    end
+end
+
+maps = {14638336319, 13379349730, 13904207646, 14012874501}
+if table.find(maps, game.PlaceId) then
+    sendNotification("Tween Farm Started | v0.1.0a", "Method: Closest Titan", 5)
+    VirtualInputManager = cloneref(game:GetService("VirtualInputManager"))
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
+    while getgenv().Farm == true do
+        local titans = workspace.Titans:GetChildren()
+        local closestTitan = nil
+        local shortestDistance = math.huge
+
+        -- Find the closest titan
+        for _, v in pairs(titans) do
+            if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") then
+                local distance = (lp.Character.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
+                if distance < shortestDistance then
+                    shortestDistance = distance
+                    closestTitan = v
+                end
+            end
+        end
+
+        if closestTitan then
+            closestTitan = workspace.Titans.Attack_Titan
+            nape = closestTitan.Hitboxes.Hit.Nape
+            nape.Size = Vector3.new(1000, 1000, 1000)
+            tweenSpeed = shortestDistance / 100
+            tweeninfo = TweenInfo.new(tweenSpeed, Enum.EasingStyle.Linear)
+            check_reload()
+            tween(nape, closestTitan)
+
+            -- Check if there are other titans with humanoids
+            local remainingTitans = workspace.Titans:GetChildren()
+            local hasTitans = false
+            for _, v in pairs(remainingTitans) do
+                if v:FindFirstChild("Humanoid") then
+                    hasTitans = true
+                    break
+                end
+            end
+
+            if not hasTitans then
+                sendNotification("Farm Finished!", "Retrying Shortly...\nCurrent Level: " .. game.Players.LocalPlayer:GetAttribute("Level"), 5)
+                JobId = game.JobId
+                repeat
+                    wait(1)
+                    click(650, 475)
+                until game.JobId ~= JobId
+                break
+            end
+        else
+            break
+        end
+    end
+else
+    sendNotification("Invalid Place ID", "Join Giant Forest or Shiganshina to start!", 5)
+end
+
+-- Uncomment this section if needed
+-- getgenv().Speed = 9999
+-- local UIS = cloneref(game:GetService("UserInputService"))
+-- while task.wait(0.1) do
+--     pcall(function() game.Players.LocalPlayer.Character.HumanoidRootPart.BV.Velocity = Vector3.new(0,getgenv().Speed,0) end)
+-- end
